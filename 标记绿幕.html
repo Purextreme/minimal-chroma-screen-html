@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Minimal Chroma Screen</title>
+  <style>
+    :root {
+      --cross-size: clamp(56px, 5vw, 160px);
+      --cross-thickness: clamp(5px, 0.45vw, 14px);
+      --safe-x: 8vw;
+      --safe-y: 8vh;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      user-select: none;
+      cursor: none;
+    }
+
+    body {
+      background: #00ff00;
+    }
+
+    body.blue {
+      background: #0000ff;
+    }
+
+    .cross {
+      position: fixed;
+      width: var(--cross-size);
+      height: var(--cross-size);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+
+    .cross::before,
+    .cross::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      background: #ffffff;
+      transform: translate(-50%, -50%);
+    }
+
+    .cross::before {
+      width: var(--cross-size);
+      height: var(--cross-thickness);
+    }
+
+    .cross::after {
+      width: var(--cross-thickness);
+      height: var(--cross-size);
+    }
+
+    .cross.top-left {
+      left: var(--safe-x);
+      top: var(--safe-y);
+    }
+
+    .cross.top-center {
+      left: 50%;
+      top: var(--safe-y);
+    }
+
+    .cross.top-right {
+      right: var(--safe-x);
+      top: var(--safe-y);
+      transform: translate(50%, -50%);
+    }
+
+    .cross.middle-left {
+      left: var(--safe-x);
+      top: 50%;
+    }
+
+    .cross.center {
+      left: 50%;
+      top: 50%;
+    }
+
+    .cross.middle-right {
+      right: var(--safe-x);
+      top: 50%;
+      transform: translate(50%, -50%);
+    }
+
+    .cross.bottom-left {
+      left: var(--safe-x);
+      bottom: var(--safe-y);
+      transform: translate(-50%, 50%);
+    }
+
+    .cross.bottom-center {
+      left: 50%;
+      bottom: var(--safe-y);
+      transform: translate(-50%, 50%);
+    }
+
+    .cross.bottom-right {
+      right: var(--safe-x);
+      bottom: var(--safe-y);
+      transform: translate(50%, 50%);
+    }
+
+    .cross.extra {
+      display: none;
+    }
+
+    body.cross-more .cross.extra {
+      display: block;
+    }
+
+    body.hide-crosses .cross {
+      display: none;
+    }
+
+    .help {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      z-index: 1;
+      width: min(520px, calc(100vw - 48px));
+      box-sizing: border-box;
+      padding: 18px 22px;
+      background: rgba(0, 0, 0, 0.72);
+      color: #ffffff;
+      font: 18px/1.55 Arial, Helvetica, sans-serif;
+      text-align: center;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+
+    body.hide-help .help {
+      display: none;
+    }
+
+    .lock-indicator {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      z-index: 2;
+      padding: 18px 26px;
+      background: rgba(0, 0, 0, 0.72);
+      color: #ffffff;
+      font: 28px/1 Arial, Helvetica, sans-serif;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      display: none;
+    }
+
+    body.show-lock .lock-indicator {
+      display: block;
+    }
+  </style>
+</head>
+<body class="blue">
+  <div class="help" aria-live="polite">
+    F11 全屏拍摄<br>
+    点击切换绿色 / 蓝色<br>
+    空格切换 5 个 / 更多 / 隐藏十字<br>
+    L 锁定 / 解锁操作<br>
+    说明将在 10 秒后自动消失
+  </div>
+
+  <div class="lock-indicator" aria-live="polite"></div>
+
+  <div class="cross top-left" aria-hidden="true"></div>
+  <div class="cross top-center extra" aria-hidden="true"></div>
+  <div class="cross top-right" aria-hidden="true"></div>
+  <div class="cross middle-left extra" aria-hidden="true"></div>
+  <div class="cross center" aria-hidden="true"></div>
+  <div class="cross middle-right extra" aria-hidden="true"></div>
+  <div class="cross bottom-left" aria-hidden="true"></div>
+  <div class="cross bottom-center extra" aria-hidden="true"></div>
+  <div class="cross bottom-right" aria-hidden="true"></div>
+
+  <script>
+    var crossMode = 0;
+    var isLocked = false;
+    var lockTimer = 0;
+
+    function showLockIndicator(text) {
+      window.clearTimeout(lockTimer);
+      document.querySelector(".lock-indicator").textContent = text;
+      document.body.classList.add("show-lock");
+      lockTimer = window.setTimeout(function () {
+        document.body.classList.remove("show-lock");
+      }, 3000);
+    }
+
+    document.addEventListener("click", function () {
+      if (isLocked) {
+        return;
+      }
+
+      document.body.classList.toggle("blue");
+    });
+
+    document.addEventListener("keydown", function (event) {
+      if (event.code === "KeyL") {
+        event.preventDefault();
+        isLocked = !isLocked;
+        showLockIndicator(isLocked ? "已锁定" : "已解锁");
+        return;
+      }
+
+      if (isLocked) {
+        event.preventDefault();
+        return;
+      }
+
+      if (event.code !== "Space") {
+        return;
+      }
+
+      event.preventDefault();
+      crossMode = (crossMode + 1) % 3;
+      document.body.classList.toggle("cross-more", crossMode === 1);
+      document.body.classList.toggle("hide-crosses", crossMode === 2);
+    });
+
+    document.addEventListener("contextmenu", function (event) {
+      event.preventDefault();
+    });
+
+    window.setTimeout(function () {
+      document.body.classList.add("hide-help");
+    }, 10000);
+  </script>
+</body>
+</html>
