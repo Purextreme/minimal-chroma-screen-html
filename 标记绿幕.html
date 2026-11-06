@@ -6,8 +6,6 @@
   <title>Minimal Chroma Screen</title>
   <style>
     :root {
-      --cross-size: clamp(56px, 5vw, 160px);
-      --cross-thickness: clamp(5px, 0.45vw, 14px);
       --safe-x: 8vw;
       --safe-y: 8vh;
     }
@@ -31,8 +29,22 @@
       background: #0000ff;
     }
 
-    .cross {
+    body.checkerboard {
+      background: conic-gradient(#000000 25%, #ffffff 0 50%, #000000 0 75%, #ffffff 0);
+      background-size: clamp(80px, 16vmin, 240px) clamp(80px, 16vmin, 240px);
+    }
+
+    .crosses {
+      --grid-steps: 2;
+      --cross-size: min(clamp(56px, 5vw, 160px), calc(42vw / var(--grid-steps)), calc(42vh / var(--grid-steps)), 15vw, 15vh);
+      --cross-thickness: min(clamp(5px, 0.45vw, 14px), calc(var(--cross-size) / 10));
       position: fixed;
+      inset: var(--safe-y) var(--safe-x);
+      pointer-events: none;
+    }
+
+    .cross {
+      position: absolute;
       width: var(--cross-size);
       height: var(--cross-size);
       transform: translate(-50%, -50%);
@@ -57,68 +69,6 @@
     .cross::after {
       width: var(--cross-thickness);
       height: var(--cross-size);
-    }
-
-    .cross.top-left {
-      left: var(--safe-x);
-      top: var(--safe-y);
-    }
-
-    .cross.top-center {
-      left: 50%;
-      top: var(--safe-y);
-    }
-
-    .cross.top-right {
-      right: var(--safe-x);
-      top: var(--safe-y);
-      transform: translate(50%, -50%);
-    }
-
-    .cross.middle-left {
-      left: var(--safe-x);
-      top: 50%;
-    }
-
-    .cross.center {
-      left: 50%;
-      top: 50%;
-    }
-
-    .cross.middle-right {
-      right: var(--safe-x);
-      top: 50%;
-      transform: translate(50%, -50%);
-    }
-
-    .cross.bottom-left {
-      left: var(--safe-x);
-      bottom: var(--safe-y);
-      transform: translate(-50%, 50%);
-    }
-
-    .cross.bottom-center {
-      left: 50%;
-      bottom: var(--safe-y);
-      transform: translate(-50%, 50%);
-    }
-
-    .cross.bottom-right {
-      right: var(--safe-x);
-      bottom: var(--safe-y);
-      transform: translate(50%, 50%);
-    }
-
-    .cross.extra {
-      display: none;
-    }
-
-    body.cross-more .cross.extra {
-      display: block;
-    }
-
-    body.hide-crosses .cross {
-      display: none;
     }
 
     .help {
@@ -164,27 +114,53 @@
   <div class="help" aria-live="polite">
     F11 全屏拍摄<br>
     点击切换绿色 / 蓝色<br>
-    空格切换 5 个 / 更多 / 隐藏十字<br>
+    空格：5 / 9 / 25 / 49 个十字 / 棋盘格 / 隐藏<br>
     L 锁定 / 解锁操作<br>
     说明将在 10 秒后自动消失
   </div>
 
   <div class="lock-indicator" aria-live="polite"></div>
 
-  <div class="cross top-left" aria-hidden="true"></div>
-  <div class="cross top-center extra" aria-hidden="true"></div>
-  <div class="cross top-right" aria-hidden="true"></div>
-  <div class="cross middle-left extra" aria-hidden="true"></div>
-  <div class="cross center" aria-hidden="true"></div>
-  <div class="cross middle-right extra" aria-hidden="true"></div>
-  <div class="cross bottom-left" aria-hidden="true"></div>
-  <div class="cross bottom-center extra" aria-hidden="true"></div>
-  <div class="cross bottom-right" aria-hidden="true"></div>
+  <div class="crosses" aria-hidden="true"></div>
 
   <script>
     var crossMode = 0;
+    var crossModes = [5, 9, 25, 49, "checkerboard", 0];
     var isLocked = false;
     var lockTimer = 0;
+
+    function renderPattern() {
+      var container = document.querySelector(".crosses");
+      var mode = crossModes[crossMode];
+      container.textContent = "";
+      document.body.classList.toggle("checkerboard", mode === "checkerboard");
+
+      if (mode === 0 || mode === "checkerboard") {
+        return;
+      }
+
+      var gridSize = mode === 5 ? 3 : Math.sqrt(mode);
+      container.style.setProperty("--grid-steps", gridSize - 1);
+      var fragment = document.createDocumentFragment();
+
+      for (var row = 0; row < gridSize; row += 1) {
+        for (var column = 0; column < gridSize; column += 1) {
+          if (mode === 5 && (row + column) % 2 !== 0) {
+            continue;
+          }
+
+          var cross = document.createElement("div");
+          cross.className = "cross";
+          cross.style.left = (column / (gridSize - 1) * 100) + "%";
+          cross.style.top = (row / (gridSize - 1) * 100) + "%";
+          fragment.appendChild(cross);
+        }
+      }
+
+      container.appendChild(fragment);
+    }
+
+    renderPattern();
 
     function showLockIndicator(text) {
       window.clearTimeout(lockTimer);
@@ -221,9 +197,8 @@
       }
 
       event.preventDefault();
-      crossMode = (crossMode + 1) % 3;
-      document.body.classList.toggle("cross-more", crossMode === 1);
-      document.body.classList.toggle("hide-crosses", crossMode === 2);
+      crossMode = (crossMode + 1) % crossModes.length;
+      renderPattern();
     });
 
     document.addEventListener("contextmenu", function (event) {
